@@ -479,16 +479,6 @@ def layout_bandgap() -> html.Div:
         dcc.Graph(id="bg-histogram", className="mt-2"),
         html.Hr(),
         html.Em("The scatter plot visualizes the trends of recently researched materials and their corresponding bandgap values."),
-        dbc.Row([
-            dbc.Col([
-                dbc.Label("Select date range:"),
-                dcc.DatePickerRange(
-                    id="bg-date-range",
-                    min_date_allowed=DF2_DATE_MIN, max_date_allowed=DF2_DATE_MAX,
-                    start_date=DF2_DATE_MIN, end_date=DF2_DATE_MAX,
-                ),
-            ]),
-        ], className="mt-2 mb-2"),
         dcc.Graph(id="bg-temporal-scatter"),
         html.Hr(),
         html.Em("The table displays ten(10) sampled journals relating to the filtered semiconductors."),
@@ -810,12 +800,10 @@ def bg_update_charts(included):
     Output("store-bg-csv",        "data"),
     Output("bg-download-area",    "children"),
     Input("bg-elem-store",        "data"),
-    Input("bg-date-range",        "start_date"),
-    Input("bg-date-range",        "end_date"),
     Input("store-sample-seed",    "data"),
     prevent_initial_call=True,
 )
-def bg_update_temporal(included, start_date, end_date, seed):
+def bg_update_temporal(included, seed):
     """Update temporal scatter, sample table, and CSV store."""
     included = included or []
     df_f1 = filter_by_included_df1(DF1, included)
@@ -826,11 +814,8 @@ def bg_update_temporal(included, start_date, end_date, seed):
     )
     unique_list = df_agg["Name"].dropna().unique().tolist()
 
-    # Date filter
-    s_date = pd.to_datetime(start_date).date() if start_date else DF2_DATE_MIN
-    e_date = pd.to_datetime(end_date).date()   if end_date   else DF2_DATE_MAX
-    mask   = (DF2["Date"].dt.date >= s_date) & (DF2["Date"].dt.date <= e_date)
-    df_d   = DF2.loc[mask]
+    # Use full date range automatically (min to max)
+    df_d = DF2
 
     df2_doi = (
         df_d[df_d["Name"].isin(unique_list)]
