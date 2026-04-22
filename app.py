@@ -628,6 +628,8 @@ app = dash.Dash(
     title="Semiconductor Database",
 )
 
+server = app.server  # for gunicorn; 'app' is the Dash instance, 'server' is the Flask instance
+
 _SIDEBAR = {
     "backgroundColor": "#f8f9fa",
     "borderRight": "1px solid #e0e0e0",
