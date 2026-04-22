@@ -259,7 +259,7 @@ def filter_by_excluded(df: pd.DataFrame, excluded: list) -> pd.DataFrame:
 
 def filter_by_included_df1(df: pd.DataFrame, included: list) -> pd.DataFrame:
     if not included:
-        return df.iloc[0:0]
+        return df          # show everything when no elements are selected
     inc = set(included)
     mask = pd.Series(True, index=df.index)
     for c in ELEMENT_COLUMNS:
@@ -614,6 +614,11 @@ def layout_decision() -> html.Div:
 
             # Results area (always in DOM; populated by callback)
             html.Div(id="mcdm-results-area"),
+            # Download button — always in DOM, shown only after analysis runs
+            html.Div(id="mcdm-dl-wrapper", style={"display": "none"}, children=[
+                dbc.Button("📥 Download Full MCDM Report", id="mcdm-dl-btn",
+                           color="primary", className="mt-3"),
+            ]),
         ]),
     ])
 
@@ -712,7 +717,7 @@ def bg_update_charts(included):
 
     # ── filter info banner ────────────────────────────────────────────────────
     if not included:
-        info = dbc.Alert("Enter element symbols above to filter materials.", color="secondary")
+        info = dbc.Alert("Showing all materials. Click elements on the periodic table to filter.", color="secondary")
     elif df_f.empty:
         info = dbc.Alert("⚠️ No materials contain only these elements.", color="warning")
     else:
@@ -725,7 +730,7 @@ def bg_update_charts(included):
     if df_f.empty:
         empty = go.Figure()
         empty.update_layout(
-            annotations=[dict(text="No data — enter element symbols above",
+            annotations=[dict(text="⚠️ No materials match these elements.",
                               showarrow=False, font=dict(size=14))],
             template="plotly_white",
         )
@@ -810,7 +815,7 @@ def bg_update_charts(included):
     Input("store-sample-seed",    "data"),
     prevent_initial_call=True,
 )
-def bg_update_temporal(pathname, included, start_date, end_date, seed):
+def bg_update_temporal(included, start_date, end_date, seed):
     """Update temporal scatter, sample table, and CSV store."""
     included = included or []
     df_f1 = filter_by_included_df1(DF1, included)
@@ -1166,9 +1171,10 @@ def show_weights_table(weighting, filters, excluded, *raw_w):
 
 # ── Run MCDM ─────────────────────────────────────────────────────────────────
 @app.callback(
-    Output("mcdm-status",       "children"),
-    Output("mcdm-results-area", "children"),
-    Output("store-mcdm-results","data"),
+    Output("mcdm-status",        "children"),
+    Output("mcdm-results-area",  "children"),
+    Output("store-mcdm-results", "data"),
+    Output("mcdm-dl-wrapper",    "style"),
     Input("mcdm-run-btn",       "n_clicks"),
     State("store-dec-filters",  "data"),
     State("store-excl",         "data"),
@@ -1179,23 +1185,23 @@ def show_weights_table(weighting, filters, excluded, *raw_w):
 )
 def run_mcdm(_, filters, excluded, method, weighting, *raw_w):
     if not filters:
-        return dbc.Alert("❌ Apply filters first.", color="danger"), html.Div(), no_update
+        return dbc.Alert("❌ Apply filters first.", color="danger"), html.Div(), no_update, {"display": "none"}
 
     df_ex = filter_by_excluded(DF1, excluded or [])
     df_f  = filter_df(df_ex, {k: v for k, v in filters.items() if k in DF1.columns})
     avail = {k: v for k, v in CRITERIA_OPTIONS.items() if k in df_f.columns}
 
     if not avail:
-        return dbc.Alert("❌ No criteria columns found.", color="danger"), html.Div(), no_update
+        return dbc.Alert("❌ No criteria columns found.", color="danger"), html.Div(), no_update, {"display": "none"}
     if df_f.empty:
-        return dbc.Alert("❌ No materials in filtered set.", color="danger"), html.Div(), no_update
+        return dbc.Alert("❌ No materials in filtered set.", color="danger"), html.Div(), no_update, {"display": "none"}
 
     matrix = df_f[list(avail.keys())].values
     types  = np.array(list(avail.values()))
 
     if np.isnan(matrix).any():
         return dbc.Alert(f"❌ {np.isnan(matrix).sum()} missing values in criteria.", color="danger"), \
-               html.Div(), no_update
+               html.Div(), no_update, {"display": "none"}
     if np.any(matrix < 0) and weighting == "Entropy":
         return dbc.Alert("❌ Entropy weighting requires non-negative values.", color="danger"), \
                html.Div(), no_update
@@ -1235,13 +1241,13 @@ def run_mcdm(_, filters, excluded, method, weighting, *raw_w):
             }).sort_values("Net Flow", ascending=False).reset_index(drop=True)
             score_col = "Net Flow"
     except Exception as e:
-        return dbc.Alert(f"❌ Error running {method}: {e}", color="danger"), html.Div(), no_update
+        return dbc.Alert(f"❌ Error running {method}: {e}", color="danger"), html.Div(), no_update, {"display": "none"}
 
     results.index      = results.index + 1
     results.index.name = "Rank"
 
     if np.isnan(results[score_col].values).any():
-        return dbc.Alert(f"❌ {method} returned NaN values.", color="danger"), html.Div(), no_update
+        return dbc.Alert(f"❌ {method} returned NaN values.", color="danger"), html.Div(), no_update, {"display": "none"}
 
     # Weights table
     wdf = pd.DataFrame({
@@ -1290,12 +1296,10 @@ def run_mcdm(_, filters, excluded, method, weighting, *raw_w):
         results_table,
         html.H5("🏆 Top Materials", className="mt-3"),
         top3_cards,
-        dbc.Button("📥 Download Full MCDM Report", id="mcdm-dl-btn",
-                   color="primary", className="mt-3"),
     ])
 
     status = dbc.Alert(f"✅ {method} analysis complete!", color="success", className="py-2")
-    return status, results_ui, results_store
+    return status, results_ui, results_store, {"display": "block"}
 
 
 # ── MCDM Download ─────────────────────────────────────────────────────────────
