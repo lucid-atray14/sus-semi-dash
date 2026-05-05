@@ -700,11 +700,7 @@ app.layout = dbc.Container(fluid=True, children=[
                 dbc.NavLink("🧠 Decision-making Assistant", href="/decision", active="exact"),
             ]),
             html.Hr(className="my-2"),
-            html.Small("Welcome page",                        className="text-muted d-block"),
-            html.Small("Commonly researched semiconductors",  className="text-muted d-block"),
-            html.Small("Multi-criteria decision making tool", className="text-muted d-block"),
-            html.Hr(className="my-2"),
-            html.Small("Semiconductor Database © 2025 | v3.0 | Developed by HERAWS",
+            html.Small("Semiconductor Database © 2026 | v5.0 | Developed by HERawS",
                        className="text-muted"),
         ]),
         # All three pages live permanently in the DOM.
